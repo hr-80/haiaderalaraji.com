@@ -43,6 +43,21 @@
   }
   .tab:hover { opacity:0.7; }
 
+  .player-wrapper {
+    width:100%;
+    aspect-ratio:16/9;
+    background:#000;
+    position:relative;
+  }
+  .player-wrapper iframe,
+  .player-wrapper > div {
+    width:100% !important;
+    height:100% !important;
+    border:none;
+    position:absolute;
+    top:0; left:0;
+  }
+
   .cards-grid {
     display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
     gap:20px; padding:20px 16px;
@@ -100,6 +115,10 @@
 
   <div class="tabs-bar" id="tabsBar"></div>
 
+  <div class="player-wrapper">
+    <div id="mainPlayer"></div>
+  </div>
+
   <div class="cards-grid" id="cardsGrid"></div>
 
   <footer class="footer">
@@ -119,6 +138,25 @@ Shorts
 https://hr-80.github.io/video3/
 التواصل الأجتماعي
 https://hr-80.github.io/haiaderalaraji/
+`;
+
+const playerPlaylist = `
+https://www.youtube.com/watch?v=ZisrP8trNyI
+https://www.youtube.com/watch?v=gxT71HOdD-s
+https://www.youtube.com/watch?v=xeb6G1Ynhds
+https://www.youtube.com/watch?v=-3sCPZnHrF8
+https://www.youtube.com/watch?v=ifRcM6pj7k0
+https://www.youtube.com/watch?v=-7tpOMk-T8c
+https://www.youtube.com/watch?v=w_C8--IlUqE
+https://www.youtube.com/watch?v=4nMeTyGMWTQ
+https://www.youtube.com/watch?v=66wjuGhis_U
+https://www.youtube.com/watch?v=FBRfWXl5R-s
+https://www.youtube.com/watch?v=8WlSnJTyE7g
+https://www.youtube.com/watch?v=_duJdF6JD8o
+https://www.youtube.com/watch?v=vZkYPM6jMR4
+https://www.youtube.com/watch?v=Lnvh3bSyCNA
+https://www.youtube.com/watch?v=P8hvQPR8-ps
+https://www.youtube.com/watch?v=S4vuEihL_Mc
 `;
 
 const cardsData = `
@@ -159,6 +197,25 @@ const socialIcons = {
   store:     'fa-brands fa-google-play',
   link:      'fa-solid fa-link'
 };
+
+function getVideoId(url) {
+  if (!url) return null;
+  url = url.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /\/embed\/([a-zA-Z0-9_-]{11})/,
+    /\/shorts\/([a-zA-Z0-9_-]{11})/,
+    /\/live\/([a-zA-Z0-9_-]{11})/,
+    /\/v\/([a-zA-Z0-9_-]{11})/
+  ];
+  for (let p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
 
 function buildTabs() {
   const bar = document.getElementById('tabsBar');
@@ -210,6 +267,46 @@ function buildSocial() {
     box.appendChild(a);
   }
 }
+
+/* ===== المشغل: تشغيل تلقائي متتالي ===== */
+const playerIds = playerPlaylist
+  .trim().split('\n').map(l=>l.trim()).filter(l=>l)
+  .map(getVideoId).filter(Boolean);
+
+let ytPlayer;
+let currentIndex = 0;
+
+function onYouTubeIframeAPIReady() {
+  if (playerIds.length === 0) return;
+  ytPlayer = new YT.Player('mainPlayer', {
+    width: '100%',
+    height: '100%',
+    videoId: playerIds[0],
+    playerVars: {
+      autoplay: 1,
+      mute: 1,
+      rel: 0,
+      playsinline: 1,
+      modestbranding: 1
+    },
+    events: {
+      'onReady': (e) => { e.target.playVideo(); },
+      'onStateChange': (e) => {
+        if (e.data === YT.PlayerState.ENDED) {
+          currentIndex = (currentIndex + 1) % playerIds.length;
+          ytPlayer.loadVideoById(playerIds[currentIndex]);
+        }
+      }
+    }
+  });
+}
+
+/* تحميل YouTube IFrame API */
+(function() {
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+})();
 
 buildTabs();
 buildCards();
